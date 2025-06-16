@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>เข้าสู่ระบบ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>กรุณากรอกชื่อของคุณ</h1>
+    <input type="text" id="username" placeholder="พิมพ์ชื่อของคุณ">
+    <button onclick="goToGallery()">ยืนยัน</button>
+  </div>
+
+  <script>
+    function goToGallery() {
+      const name = document.getElementById("username").value;
+      if (name.trim() !== "") {
+        localStorage.setItem("username", name);
+        window.location.href = "gallery.html";
+      } else {
+        alert("กรุณากรอกชื่อก่อน");
+      }
+    }
+  </script>
+</body>
+</html>

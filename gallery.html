@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แกลเลอรีของคุณ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 id="welcome"></h1>
+    <input type="file" accept="image/*" onchange="previewImage(event)">
+    <div id="gallery" class="gallery"></div>
+  </div>
+
+  <script>
+    // แสดงชื่อ
+    const username = localStorage.getItem("username");
+    document.getElementById("welcome").textContent = "ยินดีต้อนรับ " + (username || "ผู้ใช้");
+
+    // แสดงรูป + ปุ่มลบ
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "image-wrapper";
+
+          const img = document.createElement("img");
+          img.src = e.target.result;
+          img.className = "preview";
+
+          const btn = document.createElement("button");
+          btn.textContent = "ลบรูป";
+          btn.className = "delete-button";
+          btn.onclick = () => {
+            if (confirm("ต้องการลบรูปนี้หรือไม่?")) {
+              wrapper.remove();
+            }
+          };
+
+          wrapper.appendChild(img);
+          wrapper.appendChild(btn);
+          document.getElementById("gallery").appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  </script>
+</body>
+</html>
