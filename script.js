@@ -1,5 +1,10 @@
 import { db, auth, provider } from './firebase-config.js';
-import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  collection, addDoc, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  signInWithPopup, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
@@ -17,7 +22,7 @@ loginBtn.onclick = async () => {
 };
 
 logoutBtn.onclick = async () => {
-  await auth.signOut();
+  await signOut(auth);
   currentUser = null;
   updateUI();
 };
@@ -42,7 +47,7 @@ uploadBtn.onclick = async () => {
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'unsigned'); // 🔁 ชื่อตรงกับ Upload Preset ที่ตั้งใน Cloudinary
+  formData.append('upload_preset', 'unsigned'); // ใส่ชื่อ Upload Preset ของ Cloudinary
 
   const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
     method: 'POST',
@@ -76,8 +81,8 @@ async function loadImages() {
   });
 }
 
-// Initial setup
-auth.onAuthStateChanged(() => {
+// โหลดข้อมูลตอนเริ่ม
+onAuthStateChanged(auth, () => {
   updateUI();
   loadImages();
 });
