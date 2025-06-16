@@ -1,54 +1,23 @@
-import { db, auth, provider } from './firebase-config.js';
-import {
-  collection, addDoc, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  signInWithPopup, signOut, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { db } from './firebase-config.js';
+import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const userInfo = document.getElementById('user-info');
+const nicknameInput = document.getElementById('nickname');
 const fileInput = document.getElementById('file-input');
 const uploadBtn = document.getElementById('upload-btn');
 const gallery = document.getElementById('gallery');
 
-let currentUser = null;
-
-loginBtn.onclick = async () => {
-  const result = await signInWithPopup(auth, provider);
-  currentUser = result.user;
-  updateUI();
-};
-
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-  currentUser = null;
-  updateUI();
-};
-
-function updateUI() {
-  if (auth.currentUser) {
-    loginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline';
-    userInfo.textContent = `👤 Logged in as ${auth.currentUser.displayName}`;
-    currentUser = auth.currentUser;
-  } else {
-    loginBtn.style.display = 'inline';
-    logoutBtn.style.display = 'none';
-    userInfo.textContent = '';
-    currentUser = null;
-  }
-}
-
 uploadBtn.onclick = async () => {
+  const nickname = nicknameInput.value.trim();
   const file = fileInput.files[0];
-  if (!file || !currentUser) return alert("❌ ต้องเลือกไฟล์ และล็อกอินก่อน");
+
+  if (!nickname || !file) {
+    alert("❌ ต้องกรอกชื่อเล่นและเลือกรูปก่อน");
+    return;
+  }
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'unsigned'); // ใส่ชื่อ Upload Preset ของ Cloudinary
-
+  formData.append('upload_preset', 'unsigned'); // ← ตรงกับในภาพ
   const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
     method: 'POST',
     body: formData
@@ -58,13 +27,14 @@ uploadBtn.onclick = async () => {
   if (data.secure_url) {
     await addDoc(collection(db, 'images'), {
       url: data.secure_url,
-      uploader: currentUser.displayName,
+      uploader: nickname,
       created: Date.now()
     });
-    alert("✅ Uploaded!");
+    alert("✅ อัปโหลดสำเร็จ!");
     loadImages();
   } else {
     alert("❌ Upload failed");
+    console.error(data);
   }
 };
 
@@ -81,8 +51,5 @@ async function loadImages() {
   });
 }
 
-// โหลดข้อมูลตอนเริ่ม
-onAuthStateChanged(auth, () => {
-  updateUI();
-  loadImages();
-});
+// โหลดภาพเมื่อเปิดเว็บ
+loadImages();
