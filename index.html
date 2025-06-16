@@ -1,27 +1,21 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>เข้าสู่ระบบ</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Gallery</title>
 </head>
 <body>
-  <div class="container">
-    <h1>กรุณากรอกชื่อของคุณ</h1>
-    <input type="text" id="username" placeholder="พิมพ์ชื่อของคุณ">
-    <button onclick="goToGallery()">ยืนยัน</button>
-  </div>
+  <h1>Photo Gallery</h1>
 
-  <script>
-    function goToGallery() {
-      const name = document.getElementById("username").value;
-      if (name.trim() !== "") {
-        localStorage.setItem("username", name);
-        window.location.href = "gallery.html";
-      } else {
-        alert("กรุณากรอกชื่อก่อน");
-      }
-    }
-  </script>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadImage()">Upload</button>
+
+  <div id="gallery"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
