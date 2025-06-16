@@ -1,21 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Photo Gallery</title>
-</head>
 <body>
   <h1>Photo Gallery</h1>
 
+  <input type="text" id="uploaderName" placeholder="Your name" />
   <input type="file" id="fileInput" />
   <button onclick="uploadImage()">Upload</button>
 
+  <hr />
+
   <div id="gallery"></div>
 
+  <!-- Firebase scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+  <!-- Your local scripts -->
   <script src="./firebase-config.js"></script>
   <script src="./script.js"></script>
 </body>
-</html>
