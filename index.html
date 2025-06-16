@@ -1,19 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Photo Gallery</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .card { border: 1px solid #ccc; padding: 10px; border-radius: 6px; }
+    img { width: 100%; height: auto; border-radius: 4px; }
+    #login-btn, #logout-btn { margin: 10px 0; }
+  </style>
+</head>
 <body>
-  <h1>Photo Gallery</h1>
 
-  <input type="text" id="uploaderName" placeholder="Your name" />
-  <input type="file" id="fileInput" />
-  <button onclick="uploadImage()">Upload</button>
+  <h1>📷 Photo Gallery</h1>
 
-  <hr />
+  <button id="login-btn">🔐 Sign in with Google</button>
+  <button id="logout-btn" style="display:none">🚪 Logout</button>
 
-  <div id="gallery"></div>
+  <p id="user-info"></p>
 
-  <!-- Firebase scripts -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <input type="file" id="file-input" />
+  <button id="upload-btn">⬆️ Upload</button>
 
-  <!-- Your local scripts -->
-  <script src="./firebase-config.js"></script>
-  <script src="./script.js"></script>
+  <h2>🖼️ All Uploaded Images</h2>
+  <div class="image-grid" id="gallery"></div>
+
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="script.js"></script>
+
 </body>
+</html>

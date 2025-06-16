@@ -1,67 +1,83 @@
-import { collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { db, auth, provider } from './firebase-config.js';
+import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const CLOUD_NAME = "deyrj2kld";
-const UPLOAD_PRESET = "unsigned";
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const userInfo = document.getElementById('user-info');
+const fileInput = document.getElementById('file-input');
+const uploadBtn = document.getElementById('upload-btn');
+const gallery = document.getElementById('gallery');
 
-async function uploadImage() {
-  const fileInput = document.getElementById("fileInput");
-  const uploaderName = document.getElementById("uploaderName").value.trim();
-  const file = fileInput.files[0];
+let currentUser = null;
 
-  if (!file || !uploaderName) {
-    return alert("กรุณากรอกชื่อ และเลือกรูปก่อนอัปโหลด");
+loginBtn.onclick = async () => {
+  const result = await signInWithPopup(auth, provider);
+  currentUser = result.user;
+  updateUI();
+};
+
+logoutBtn.onclick = async () => {
+  await auth.signOut();
+  currentUser = null;
+  updateUI();
+};
+
+function updateUI() {
+  if (auth.currentUser) {
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline';
+    userInfo.textContent = `👤 Logged in as ${auth.currentUser.displayName}`;
+    currentUser = auth.currentUser;
+  } else {
+    loginBtn.style.display = 'inline';
+    logoutBtn.style.display = 'none';
+    userInfo.textContent = '';
+    currentUser = null;
   }
+}
+
+uploadBtn.onclick = async () => {
+  const file = fileInput.files[0];
+  if (!file || !currentUser) return alert("❌ ต้องเลือกไฟล์ และล็อกอินก่อน");
 
   const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
+  formData.append('file', file);
+  formData.append('upload_preset', 'unsigned'); // 🔁 ชื่อตรงกับ Upload Preset ที่ตั้งใน Cloudinary
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, {
-    method: "POST",
+  const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
+    method: 'POST',
     body: formData
   });
 
-  const data = await response.json();
-  const imageUrl = data.secure_url;
+  const data = await res.json();
+  if (data.secure_url) {
+    await addDoc(collection(db, 'images'), {
+      url: data.secure_url,
+      uploader: currentUser.displayName,
+      created: Date.now()
+    });
+    alert("✅ Uploaded!");
+    loadImages();
+  } else {
+    alert("❌ Upload failed");
+  }
+};
 
-  // Save to Firestore
-  await addDoc(collection(window.db, "images"), {
-    url: imageUrl,
-    uploader: uploaderName,
-    createdAt: new Date(),
-  });
-
-  alert("อัปโหลดเสร็จเรียบร้อยแล้ว!");
-  fileInput.value = "";
-  document.getElementById("uploaderName").value = "";
-  loadGallery();
-}
-
-async function loadGallery() {
-  const snapshot = await getDocs(query(collection(window.db, "images"), orderBy("createdAt", "desc")));
-  const gallery = document.getElementById("gallery");
+async function loadImages() {
+  gallery.innerHTML = "⏳ Loading...";
+  const snapshot = await getDocs(collection(db, 'images'));
   gallery.innerHTML = "";
-
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    const container = document.createElement("div");
-    container.style.marginBottom = "20px";
-
-    const img = document.createElement("img");
-    img.src = data.url;
-    img.style.width = "200px";
-    img.style.borderRadius = "8px";
-    img.style.display = "block";
-
-    const caption = document.createElement("div");
-    caption.textContent = `📸 โดย: ${data.uploader || "ไม่ระบุชื่อ"}`;
-    caption.style.marginTop = "4px";
-    caption.style.fontSize = "14px";
-
-    container.appendChild(img);
-    container.appendChild(caption);
-    gallery.appendChild(container);
+  snapshot.forEach(doc => {
+    const { url, uploader } = doc.data();
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<img src="${url}" /><p>👤 ${uploader}</p>`;
+    gallery.appendChild(card);
   });
 }
 
-window.onload = loadGallery;
+// Initial setup
+auth.onAuthStateChanged(() => {
+  updateUI();
+  loadImages();
+});
