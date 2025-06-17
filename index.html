@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>📸 My Photo Gallery</title>
-  <link href="https://fonts.googleapis.com/css2?family=Kanit&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
@@ -15,13 +15,11 @@
       --danger: #e74c3c;
       --accent: #8e44ad;
     }
-
     .dark-mode {
       --bg: #1e1e1e;
       --text: #f4f4f4;
       --card-bg: #2a2a2a;
     }
-
     body {
       font-family: 'Kanit', sans-serif;
       margin: 0;
@@ -30,19 +28,16 @@
       padding: 20px;
       transition: all 0.3s ease-in-out;
     }
-
     h2 {
       text-align: center;
       font-size: 2rem;
       margin-bottom: 20px;
     }
-
     .theme-toggle {
       position: fixed;
       top: 20px;
       right: 20px;
     }
-
     .theme-toggle button {
       background: var(--primary);
       color: white;
@@ -51,7 +46,6 @@
       padding: 8px 16px;
       cursor: pointer;
     }
-
     .gender-page, .upload-area {
       display: flex;
       flex-wrap: wrap;
@@ -59,27 +53,26 @@
       gap: 10px;
       margin-bottom: 15px;
     }
-
     .gender-page input, .upload-area input, .upload-area button {
       font-size: 16px;
       padding: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
     .gender-page button, .upload-area button {
       background: var(--primary);
       color: white;
       border: none;
       cursor: pointer;
     }
-
+    .gender-page button:hover, .upload-area button:hover {
+      opacity: 0.9;
+    }
     .search-area {
       display: flex;
       justify-content: center;
       margin-bottom: 20px;
     }
-
     .search-area input {
       padding: 10px;
       font-size: 16px;
@@ -88,21 +81,22 @@
       width: 300px;
       max-width: 90%;
     }
-
     .gallery {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
     }
-
     .card {
       background: var(--card-bg);
       border-radius: 12px;
       padding: 10px;
       text-align: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: 0.2s;
     }
-
+    .card:hover {
+      transform: scale(1.02);
+    }
     .card img {
       width: 100%;
       height: auto;
@@ -110,11 +104,9 @@
       object-fit: contain;
       background-color: white;
     }
-
     .card p {
       margin: 8px 0;
     }
-
     .delete-btn {
       background: var(--danger);
       color: white;
@@ -123,23 +115,14 @@
       padding: 6px 12px;
       cursor: pointer;
     }
-
+    .delete-btn:hover {
+      background: #c0392b;
+    }
     .gender-counter {
       text-align: left;
       margin: 10px 0 20px;
       font-weight: bold;
     }
-
-    .online-counter {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: var(--card-bg);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
     @media (max-width: 500px) {
       .gender-page, .upload-area {
         flex-direction: column;
@@ -152,10 +135,6 @@
 
   <div class="theme-toggle">
     <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
-  </div>
-
-  <div class="online-counter" id="online-counter">
-    👦 ชาย: 0 | 👧 หญิง: 0
   </div>
 
   <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
@@ -185,7 +164,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -208,26 +187,25 @@
     const searchInput = document.getElementById('search-input');
     const themeToggleBtn = document.getElementById('theme-toggle');
     const genderCount = document.getElementById('gender-count');
-    const onlineCounter = document.getElementById('online-counter');
 
     let gender = null;
     let nickname = "";
-    let onlineDocId = null;
+    let userId = `user_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
     window.selectGender = async (g) => {
       nickname = nameInput.value.trim();
       if (!nickname) return alert("กรุณากรอกชื่อเล่นก่อน");
-
       gender = g;
+
       document.getElementById('gender-page').style.display = 'none';
       document.getElementById('main-page').style.display = 'block';
 
-      const docRef = await addDoc(collection(db, "onlineUsers"), {
+      // บันทึกสถานะออนไลน์
+      await setDoc(doc(db, 'onlineUsers', userId), {
         name: nickname,
         gender: gender,
-        time: Date.now()
+        timestamp: Date.now()
       });
-      onlineDocId = docRef.id;
 
       loadImages();
     };
@@ -284,22 +262,19 @@
 
       genderCount.textContent = `👨 ชาย: ${male} | 👩 หญิง: ${female}`;
 
-      docs
-        .sort((a, b) => b.created - a.created)
-        .forEach(({ id, url, uploader, caption, gender: g }) => {
-          if (!uploader.toLowerCase().includes(search)) return;
-
-          const icon = g === 'ชาย' ? '👦' : '👧';
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <img src="${url}" />
-            <p>${icon} <b>${uploader}</b></p>
-            <p>${caption}</p>
-            ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
-          `;
-          gallery.appendChild(card);
-        });
+      docs.sort((a, b) => b.created - a.created).forEach(({ id, url, uploader, caption, gender: g }) => {
+        if (!uploader.toLowerCase().includes(search)) return;
+        const icon = g === 'ชาย' ? '👦' : '👧';
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${url}" />
+          <p>${icon} <b>${uploader}</b></p>
+          <p>${caption}</p>
+          ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
+        `;
+        gallery.appendChild(card);
+      });
 
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
@@ -312,25 +287,18 @@
       });
     }
 
-    // Count online users live
-    onSnapshot(collection(db, "onlineUsers"), (snap) => {
-      let male = 0, female = 0;
-      snap.forEach(doc => {
-        const g = doc.data().gender;
-        if (g === 'ชาย') male++;
-        if (g === 'หญิง') female++;
-      });
-      onlineCounter.textContent = `👦 ชาย: ${male} | 👧 หญิง: ${female}`;
-    });
-
+    // ลบผู้ใช้ออนไลน์เมื่อออกจากหน้าเว็บ
     window.addEventListener('beforeunload', async () => {
-      if (onlineDocId) {
-        await deleteDoc(doc(db, "onlineUsers", onlineDocId));
+      try {
+        if (userId) {
+          await deleteDoc(doc(db, 'onlineUsers', userId));
+        }
+      } catch (e) {
+        console.warn("ไม่สามารถลบสถานะออนไลน์ก่อนปิดหน้าต่าง");
       }
     });
 
     searchInput.addEventListener('input', loadImages);
-
     themeToggleBtn.onclick = () => {
       document.body.classList.toggle('dark-mode');
     };
