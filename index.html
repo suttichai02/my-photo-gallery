@@ -13,7 +13,6 @@
       --card-bg: #fff;
       --primary: #4CAF50;
       --danger: #e74c3c;
-      --accent: #8e44ad;
     }
     .dark-mode {
       --bg: #1e1e1e;
@@ -65,9 +64,6 @@
       border: none;
       cursor: pointer;
     }
-    .gender-page button:hover, .upload-area button:hover {
-      opacity: 0.9;
-    }
     .search-area {
       display: flex;
       justify-content: center;
@@ -83,26 +79,20 @@
     }
     .gallery {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
     }
     .card {
       background: var(--card-bg);
       border-radius: 12px;
       padding: 10px;
-      text-align: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      transition: 0.2s;
-    }
-    .card:hover {
-      transform: scale(1.02);
     }
     .card img {
       width: 100%;
-      height: auto;
       aspect-ratio: 4/3;
-      object-fit: contain;
-      background-color: white;
+      object-fit: cover;
+      border-radius: 8px;
     }
     .card p {
       margin: 8px 0;
@@ -115,19 +105,24 @@
       padding: 6px 12px;
       cursor: pointer;
     }
-    .delete-btn:hover {
-      background: #c0392b;
-    }
     .gender-counter {
       text-align: left;
       margin: 10px 0 20px;
       font-weight: bold;
     }
-    @media (max-width: 500px) {
-      .gender-page, .upload-area {
-        flex-direction: column;
-        align-items: center;
-      }
+    input.comment-input {
+      width: 100%;
+      margin: 5px 0;
+      padding: 6px;
+      border-radius: 6px;
+    }
+    button.comment-btn {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -164,7 +159,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
+      setDoc, updateDoc, getDoc, query, where
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -200,7 +196,6 @@
       document.getElementById('gender-page').style.display = 'none';
       document.getElementById('main-page').style.display = 'block';
 
-      // บันทึกสถานะออนไลน์
       await setDoc(doc(db, 'onlineUsers', userId), {
         name: nickname,
         gender: gender,
@@ -219,22 +214,22 @@
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', 'unsigned');
+      formData.append('upload_preset', 'YOUR_UPLOAD_PRESET');
 
-      const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
+      const res = await fetch('https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload', {
         method: 'POST',
         body: formData
       });
 
       const data = await res.json();
-
       if (data.secure_url) {
         await addDoc(collection(db, 'images'), {
           url: data.secure_url,
           uploader: nickname,
           caption,
           gender,
-          created: Date.now()
+          created: Date.now(),
+          likes: []
         });
         fileInput.value = '';
         captionInput.value = '';
@@ -262,32 +257,74 @@
 
       genderCount.textContent = `👨 ชาย: ${male} | 👩 หญิง: ${female}`;
 
-      docs.sort((a, b) => b.created - a.created).forEach(({ id, url, uploader, caption, gender: g }) => {
-        if (!uploader.toLowerCase().includes(search)) return;
+      for (const img of docs.sort((a, b) => b.created - a.created)) {
+        if (!img.uploader.toLowerCase().includes(search)) continue;
+        const { id, url, uploader, caption, gender: g, likes = [] } = img;
         const icon = g === 'ชาย' ? '👦' : '👧';
+
         const card = document.createElement('div');
         card.className = 'card';
+        const isLiked = likes.includes(userId);
         card.innerHTML = `
           <img src="${url}" />
           <p>${icon} <b>${uploader}</b></p>
           <p>${caption}</p>
+          <p><button class="like-btn" data-id="${id}">👍 ${likes.length} ${isLiked ? '✅' : ''}</button></p>
+          <div class="comments" data-id="${id}"></div>
+          <input type="text" class="comment-input" placeholder="เขียนคอมเมนต์..." data-id="${id}" />
+          <button class="comment-btn" data-id="${id}">💬 ส่ง</button>
           ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
         `;
         gallery.appendChild(card);
-      });
 
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.getAttribute('data-id');
+        // Like button
+        card.querySelector('.like-btn')?.addEventListener('click', async () => {
+          const imgRef = doc(db, 'images', id);
+          const snap = await getDoc(imgRef);
+          let likes = snap.data().likes || [];
+          if (likes.includes(userId)) {
+            likes = likes.filter(uid => uid !== userId);
+          } else {
+            likes.push(userId);
+          }
+          await updateDoc(imgRef, { likes });
+          loadImages();
+        });
+
+        // Load comments
+        const commentArea = card.querySelector('.comments');
+        const commentsSnap = await getDocs(query(collection(db, 'comments'), where("imageId", "==", id)));
+        commentsSnap.forEach(c => {
+          const d = c.data();
+          const p = document.createElement('p');
+          p.textContent = `💬 ${d.name}: ${d.text}`;
+          commentArea.appendChild(p);
+        });
+
+        // Submit comment
+        card.querySelector('.comment-btn')?.addEventListener('click', async () => {
+          const input = card.querySelector('.comment-input');
+          const text = input.value.trim();
+          if (!text) return;
+          await addDoc(collection(db, 'comments'), {
+            imageId: id,
+            name: nickname,
+            text,
+            created: Date.now()
+          });
+          loadImages();
+        });
+
+        // Delete button
+        card.querySelector('.delete-btn')?.addEventListener('click', async () => {
           if (confirm("คุณแน่ใจว่าจะลบรูปภาพนี้?")) {
             await deleteDoc(doc(db, 'images', id));
             loadImages();
           }
-        };
-      });
+        });
+      }
     }
 
-    // ลบผู้ใช้ออนไลน์เมื่อออกจากหน้าเว็บ
     window.addEventListener('beforeunload', async () => {
       try {
         if (userId) {
