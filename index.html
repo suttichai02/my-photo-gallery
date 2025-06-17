@@ -3,86 +3,147 @@
 <head>
   <meta charset="UTF-8" />
   <title>📸 My Photo Gallery</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Kanit&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    :root {
+      --bg: #f9fafb;
+      --text: #222;
+      --card-bg: #fff;
+      --primary: #4CAF50;
+      --danger: #e74c3c;
+      --accent: #8e44ad;
+    }
+
+    .dark-mode {
+      --bg: #1e1e1e;
+      --text: #f4f4f4;
+      --card-bg: #2a2a2a;
+    }
+
     body {
       font-family: 'Kanit', sans-serif;
-      background: var(--bg-color);
-      color: var(--text-color);
       margin: 0;
+      background: var(--bg);
+      color: var(--text);
       padding: 20px;
-      transition: background 0.3s, color 0.3s;
+      transition: all 0.3s ease-in-out;
     }
-    :root {
-      --bg-color: #f5f7fa;
-      --text-color: #333;
-      --card-bg: white;
-      --btn-bg: #4CAF50;
-      --btn-text: white;
-      --delete-bg: #e74c3c;
+
+    h2 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 20px;
     }
-    .dark-mode {
-      --bg-color: #1f1f1f;
-      --text-color: #f1f1f1;
-      --card-bg: #2c2c2c;
-      --btn-bg: #5DAE8B;
-      --btn-text: #fff;
-      --delete-bg: #c0392b;
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
     }
-    h2 { text-align: center; }
-    .form-upload, .search-bar {
+
+    .theme-toggle button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+
+    .upload-area {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      margin: 10px 0;
+      margin-bottom: 15px;
     }
-    input[type="text"], input[type="file"] {
+
+    .upload-area input,
+    .upload-area button {
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    .upload-area button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .upload-area button:hover {
+      opacity: 0.9;
+    }
+
+    .search-area {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .search-area input {
       padding: 10px;
       font-size: 16px;
       border-radius: 8px;
       border: 1px solid #ccc;
+      width: 300px;
+      max-width: 90%;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      background: var(--btn-bg);
-      color: var(--btn-text);
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover { opacity: 0.9; }
+
     .gallery {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
     }
+
     .card {
       background: var(--card-bg);
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 10px;
       text-align: center;
-      transition: transform 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: 0.2s;
     }
-    .card:hover { transform: scale(1.03); }
+
+    .card:hover {
+      transform: scale(1.02);
+    }
+
     .card img {
       width: 100%;
-      height: 100px;
+      height: 160px;
       object-fit: cover;
       border-radius: 10px;
     }
-    .card p { margin: 8px 0 4px; }
-    .delete-btn {
-      background: var(--delete-bg);
-      margin-top: 6px;
+
+    .card p {
+      margin: 10px 0 5px;
+      font-weight: bold;
+      color: var(--accent);
     }
-    .theme-toggle {
-      position: fixed;
-      top: 15px;
-      right: 20px;
+
+    .delete-btn {
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .delete-btn:hover {
+      background: #c0392b;
+    }
+
+    @media (max-width: 500px) {
+      .upload-area {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
@@ -94,13 +155,13 @@
 
   <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
 
-  <div class="form-upload">
+  <div class="upload-area">
     <input id="nickname-input" placeholder="ชื่อเล่น..." />
     <input type="file" id="file-input" />
     <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
   </div>
 
-  <div class="search-bar">
+  <div class="search-area">
     <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
   </div>
 
@@ -134,7 +195,6 @@
     uploadBtn.onclick = async () => {
       const file = fileInput.files[0];
       const nickname = nicknameInput.value.trim();
-
       if (!file || !nickname) {
         return alert("❌ กรุณาเลือกไฟล์ และใส่ชื่อเล่นก่อน");
       }
@@ -149,14 +209,15 @@
       });
 
       const data = await res.json();
+
       if (data.secure_url) {
         await addDoc(collection(db, 'images'), {
           url: data.secure_url,
           uploader: nickname,
           created: Date.now()
         });
-        alert("✅ อัปโหลดสำเร็จ!");
         fileInput.value = '';
+        nicknameInput.value = '';
         loadImages();
       } else {
         alert("❌ Upload ไม่สำเร็จ");
@@ -178,12 +239,31 @@
         card.className = 'card';
         card.innerHTML = `
           <img src="${url}" />
-          <p>👤 ${uploader}</p>
-          ${uploader === nickname ? `<button data-id="${docSnap.id}" class="delete-btn">🗑️ ลบ</button>` : ''}
+          <p><i class="fas fa-user"></i> ${uploader}</p>
+          ${uploader === nickname ? `<button data-id="${docSnap.id}" class="delete-btn">ลบ</button>` : ''}
         `;
         gallery.appendChild(card);
       });
 
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
-          const id = btn
+          const id = btn.getAttribute('data-id');
+          if (confirm("คุณแน่ใจว่าจะลบรูปภาพนี้?")) {
+            await deleteDoc(doc(db, 'images', id));
+            loadImages();
+          }
+        };
+      });
+    }
+
+    nicknameInput.addEventListener('input', loadImages);
+    searchInput.addEventListener('input', loadImages);
+
+    themeToggleBtn.onclick = () => {
+      document.body.classList.toggle('dark-mode');
+    };
+
+    loadImages();
+  </script>
+</body>
+</html>
