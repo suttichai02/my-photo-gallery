@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="UTF-8" />
   <title>📸 My Photo Gallery</title>
@@ -14,7 +14,6 @@
       padding: 20px;
       transition: background 0.3s, color 0.3s;
     }
-
     :root {
       --bg-color: #f5f7fa;
       --text-color: #333;
@@ -23,7 +22,6 @@
       --btn-text: white;
       --delete-bg: #e74c3c;
     }
-
     .dark-mode {
       --bg-color: #1f1f1f;
       --text-color: #f1f1f1;
@@ -32,26 +30,20 @@
       --btn-text: #fff;
       --delete-bg: #c0392b;
     }
-
-    h2 {
-      text-align: center;
-    }
-
-    .form-upload {
+    h2 { text-align: center; }
+    .form-upload, .search-bar {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      margin-bottom: 20px;
+      margin: 10px 0;
     }
-
     input[type="text"], input[type="file"] {
       padding: 10px;
       font-size: 16px;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -61,17 +53,12 @@
       border-radius: 8px;
       cursor: pointer;
     }
-
-    button:hover {
-      opacity: 0.9;
-    }
-
+    button:hover { opacity: 0.9; }
     .gallery {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 20px;
     }
-
     .card {
       background: var(--card-bg);
       border-radius: 12px;
@@ -80,44 +67,22 @@
       text-align: center;
       transition: transform 0.2s;
     }
-
-    .card:hover {
-      transform: scale(1.03);
-    }
-
+    .card:hover { transform: scale(1.03); }
     .card img {
       width: 100%;
-      height: auto;
+      height: 180px;
+      object-fit: cover;
       border-radius: 10px;
     }
-
-    .card p {
-      margin: 8px 0 4px;
-    }
-
+    .card p { margin: 8px 0 4px; }
     .delete-btn {
       background: var(--delete-bg);
       margin-top: 6px;
     }
-
-    .search-bar {
-      margin: 20px auto;
-      text-align: center;
-    }
-
     .theme-toggle {
       position: fixed;
       top: 15px;
       right: 20px;
-    }
-
-    .like-btn {
-      background: transparent;
-      color: #e74c3c;
-      cursor: pointer;
-      font-size: 18px;
-      border: none;
-      margin-top: 5px;
     }
   </style>
 </head>
@@ -130,7 +95,7 @@
   <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
 
   <div class="form-upload">
-    <input id="name-input" placeholder="ชื่อเล่น..." />
+    <input id="nickname-input" placeholder="ชื่อเล่น..." />
     <input type="file" id="file-input" />
     <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
   </div>
@@ -144,13 +109,81 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyAmdR9Vf1p1zsfXfAe9eHdVF2UMyO-Y",
+      apiKey: "AIzaSyAadMR9TVflpHzsfXIeAe9eHdVF2UwyO-Y",
       authDomain: "photo-gallery-a2dec.firebaseapp.com",
       projectId: "photo-gallery-a2dec",
       storageBucket: "photo-gallery-a2dec.appspot.com",
       messagingSenderId: "163307931322",
-      appId: "1:1633
+      appId: "1:163307931322:web:90e290b72543fd8ab92483"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const gallery = document.getElementById('gallery');
+    const nicknameInput = document.getElementById('nickname-input');
+    const searchInput = document.getElementById('search-input');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+
+    uploadBtn.onclick = async () => {
+      const file = fileInput.files[0];
+      const nickname = nicknameInput.value.trim();
+
+      if (!file || !nickname) {
+        return alert("❌ กรุณาเลือกไฟล์ และใส่ชื่อเล่นก่อน");
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'unsigned');
+
+      const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.secure_url) {
+        await addDoc(collection(db, 'images'), {
+          url: data.secure_url,
+          uploader: nickname,
+          created: Date.now()
+        });
+        alert("✅ อัปโหลดสำเร็จ!");
+        fileInput.value = '';
+        loadImages();
+      } else {
+        alert("❌ Upload ไม่สำเร็จ");
+      }
+    };
+
+    async function loadImages() {
+      gallery.innerHTML = "⏳ Loading...";
+      const snapshot = await getDocs(collection(db, 'images'));
+      const search = searchInput.value.trim().toLowerCase();
+      const nickname = nicknameInput.value.trim();
+      gallery.innerHTML = "";
+
+      snapshot.forEach(docSnap => {
+        const { url, uploader } = docSnap.data();
+        if (!uploader.toLowerCase().includes(search)) return;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${url}" />
+          <p>👤 ${uploader}</p>
+          ${uploader === nickname ? `<button data-id="${docSnap.id}" class="delete-btn">🗑️ ลบ</button>` : ''}
+        `;
+        gallery.appendChild(card);
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn
