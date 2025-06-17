@@ -52,6 +52,18 @@
       cursor: pointer;
     }
 
+    .user-counter {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: var(--primary);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 999;
+    }
+
     .upload-area {
       display: flex;
       flex-wrap: wrap;
@@ -150,6 +162,10 @@
 </head>
 <body>
 
+  <div class="user-counter">
+    👥 กำลังใช้งาน: <span id="user-count">0</span> คน
+  </div>
+
   <div class="theme-toggle">
     <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
   </div>
@@ -169,9 +185,11 @@
   <div class="gallery" id="gallery"></div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, onSnapshot
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -192,13 +210,13 @@
     const nicknameInput = document.getElementById('nickname-input');
     const searchInput = document.getElementById('search-input');
     const themeToggleBtn = document.getElementById('theme-toggle');
+    const userCountEl = document.getElementById('user-count');
 
+    // อัปโหลดรูป
     uploadBtn.onclick = async () => {
       const file = fileInput.files[0];
       const nickname = nicknameInput.value.trim();
-      if (!file || !nickname) {
-        return alert("❌ กรุณาเลือกไฟล์ และใส่ชื่อเล่นก่อน");
-      }
+      if (!file || !nickname) return alert("❌ กรุณาเลือกไฟล์ และใส่ชื่อเล่นก่อน");
 
       const formData = new FormData();
       formData.append('file', file);
@@ -208,7 +226,6 @@
         method: 'POST',
         body: formData
       });
-
       const data = await res.json();
 
       if (data.secure_url) {
@@ -225,21 +242,21 @@
       }
     };
 
+    // โหลดภาพ
     async function loadImages() {
       gallery.innerHTML = "⏳ Loading...";
       const snapshot = await getDocs(collection(db, 'images'));
+      const docs = [];
+      snapshot.forEach(docSnap => docs.push({ id: docSnap.id, ...docSnap.data() }));
+
       const search = searchInput.value.trim().toLowerCase();
       const nickname = nicknameInput.value.trim();
       gallery.innerHTML = "";
-
-      const docs = [];
-      snapshot.forEach(docSnap => docs.push({ id: docSnap.id, ...docSnap.data() }));
 
       docs
         .sort((a, b) => b.created - a.created)
         .forEach(({ id, url, uploader }) => {
           if (!uploader.toLowerCase().includes(search)) return;
-
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
@@ -263,12 +280,38 @@
 
     nicknameInput.addEventListener('input', loadImages);
     searchInput.addEventListener('input', loadImages);
-
     themeToggleBtn.onclick = () => {
       document.body.classList.toggle('dark-mode');
     };
 
     loadImages();
+
+    // 🔥 แสดงจำนวนผู้ใช้งานแบบ real-time
+    const sessionId = Math.random().toString(36).substring(2);
+    const sessionRef = doc(db, "onlineUsers", sessionId);
+
+    async function updatePresence() {
+      await setDoc(sessionRef, {
+        lastActive: Date.now()
+      });
+    }
+
+    updatePresence();
+    setInterval(updatePresence, 20000); // ทุก 20 วิ
+
+    window.addEventListener("beforeunload", () => {
+      deleteDoc(sessionRef);
+    });
+
+    function monitorUsers() {
+      const threshold = Date.now() - 30000; // 30 วิ
+      onSnapshot(collection(db, "onlineUsers"), (snapshot) => {
+        const activeUsers = snapshot.docs.filter(doc => doc.data().lastActive > threshold);
+        userCountEl.textContent = activeUsers.length;
+      });
+    }
+
+    monitorUsers();
   </script>
 </body>
 </html>
