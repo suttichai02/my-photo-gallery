@@ -52,19 +52,7 @@
       cursor: pointer;
     }
 
-    .user-counter {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: var(--primary);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      z-index: 999;
-    }
-
-    .upload-area {
+    .gender-page, .upload-area {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -72,22 +60,21 @@
       margin-bottom: 15px;
     }
 
-    .upload-area input,
-    .upload-area button {
+    .gender-page input, .upload-area input, .upload-area button {
       font-size: 16px;
       padding: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
 
-    .upload-area button {
+    .gender-page button, .upload-area button {
       background: var(--primary);
       color: white;
       border: none;
       cursor: pointer;
     }
 
-    .upload-area button:hover {
+    .gender-page button:hover, .upload-area button:hover {
       opacity: 0.9;
     }
 
@@ -134,9 +121,7 @@
     }
 
     .card p {
-      margin: 10px 0 5px;
-      font-weight: bold;
-      color: var(--accent);
+      margin: 8px 0;
     }
 
     .delete-btn {
@@ -152,8 +137,14 @@
       background: #c0392b;
     }
 
+    .gender-counter {
+      text-align: left;
+      margin: 10px 0 20px;
+      font-weight: bold;
+    }
+
     @media (max-width: 500px) {
-      .upload-area {
+      .gender-page, .upload-area {
         flex-direction: column;
         align-items: center;
       }
@@ -162,34 +153,38 @@
 </head>
 <body>
 
-  <div class="user-counter">
-    👥 กำลังใช้งาน: <span id="user-count">0</span> คน
-  </div>
-
   <div class="theme-toggle">
     <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
   </div>
 
   <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
 
-  <div class="upload-area">
-    <input id="nickname-input" placeholder="ชื่อเล่น..." />
-    <input type="file" id="file-input" />
-    <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
+  <div id="gender-page" class="gender-page">
+    <input id="name-input" placeholder="ชื่อเล่น..." />
+    <button onclick="selectGender('ชาย')">👦 ชาย</button>
+    <button onclick="selectGender('หญิง')">👧 หญิง</button>
   </div>
 
-  <div class="search-area">
-    <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
-  </div>
+  <div id="main-page" style="display:none">
+    <div class="gender-counter" id="gender-count">กำลังโหลดข้อมูลเพศ...</div>
 
-  <div class="gallery" id="gallery"></div>
+    <div class="upload-area">
+      <input id="caption-input" placeholder="ข้อความประกอบ..." />
+      <input type="file" id="file-input" />
+      <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
+    </div>
+
+    <div class="search-area">
+      <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+  </div>
 
   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, onSnapshot
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -204,64 +199,91 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    const nameInput = document.getElementById('name-input');
+    const captionInput = document.getElementById('caption-input');
     const fileInput = document.getElementById('file-input');
     const uploadBtn = document.getElementById('upload-btn');
     const gallery = document.getElementById('gallery');
-    const nicknameInput = document.getElementById('nickname-input');
     const searchInput = document.getElementById('search-input');
     const themeToggleBtn = document.getElementById('theme-toggle');
-    const userCountEl = document.getElementById('user-count');
+    const genderCount = document.getElementById('gender-count');
+    let gender = null;
+    let nickname = "";
 
-    // อัปโหลดรูป
+    window.selectGender = async (g) => {
+      nickname = nameInput.value.trim();
+      if (!nickname) return alert("กรุณากรอกชื่อเล่นก่อน");
+
+      gender = g;
+      document.getElementById('gender-page').style.display = 'none';
+      document.getElementById('main-page').style.display = 'block';
+      loadImages();
+    };
+
     uploadBtn.onclick = async () => {
       const file = fileInput.files[0];
-      const nickname = nicknameInput.value.trim();
-      if (!file || !nickname) return alert("❌ กรุณาเลือกไฟล์ และใส่ชื่อเล่นก่อน");
+      const caption = captionInput.value.trim();
+      if (!file || !caption || !nickname || !gender) {
+        return alert("❌ กรุณาเลือกไฟล์ + เขียนข้อความ");
+      }
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', 'unsigned');
+      formData.append('upload_preset', 'unsigned'); // เปลี่ยนเป็นของคุณเอง
 
       const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
         method: 'POST',
         body: formData
       });
+
       const data = await res.json();
 
       if (data.secure_url) {
         await addDoc(collection(db, 'images'), {
           url: data.secure_url,
           uploader: nickname,
+          caption,
+          gender,
           created: Date.now()
         });
         fileInput.value = '';
-        nicknameInput.value = '';
+        captionInput.value = '';
         loadImages();
       } else {
         alert("❌ Upload ไม่สำเร็จ");
       }
     };
 
-    // โหลดภาพ
     async function loadImages() {
       gallery.innerHTML = "⏳ Loading...";
       const snapshot = await getDocs(collection(db, 'images'));
-      const docs = [];
-      snapshot.forEach(docSnap => docs.push({ id: docSnap.id, ...docSnap.data() }));
-
       const search = searchInput.value.trim().toLowerCase();
-      const nickname = nicknameInput.value.trim();
       gallery.innerHTML = "";
+
+      const docs = [];
+      let male = 0, female = 0;
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docs.push({ id: docSnap.id, ...data });
+        if (data.gender === 'ชาย') male++;
+        if (data.gender === 'หญิง') female++;
+      });
+
+      genderCount.textContent = `👨 ชาย: ${male} | 👩 หญิง: ${female}`;
 
       docs
         .sort((a, b) => b.created - a.created)
-        .forEach(({ id, url, uploader }) => {
+        .forEach(({ id, url, uploader, caption, gender: g }) => {
           if (!uploader.toLowerCase().includes(search)) return;
+
+          const icon = g === 'ชาย' ? '👦' : '👧';
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
             <img src="${url}" />
-            <p><i class="fas fa-user"></i> ${uploader}</p>
+            <p>${icon} <b>${uploader}</b></p>
+            <p>${caption}</p>
             ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
           `;
           gallery.appendChild(card);
@@ -278,40 +300,10 @@
       });
     }
 
-    nicknameInput.addEventListener('input', loadImages);
     searchInput.addEventListener('input', loadImages);
     themeToggleBtn.onclick = () => {
       document.body.classList.toggle('dark-mode');
     };
-
-    loadImages();
-
-    // 🔥 แสดงจำนวนผู้ใช้งานแบบ real-time
-    const sessionId = Math.random().toString(36).substring(2);
-    const sessionRef = doc(db, "onlineUsers", sessionId);
-
-    async function updatePresence() {
-      await setDoc(sessionRef, {
-        lastActive: Date.now()
-      });
-    }
-
-    updatePresence();
-    setInterval(updatePresence, 20000); // ทุก 20 วิ
-
-    window.addEventListener("beforeunload", () => {
-      deleteDoc(sessionRef);
-    });
-
-    function monitorUsers() {
-      const threshold = Date.now() - 30000; // 30 วิ
-      onSnapshot(collection(db, "onlineUsers"), (snapshot) => {
-        const activeUsers = snapshot.docs.filter(doc => doc.data().lastActive > threshold);
-        userCountEl.textContent = activeUsers.length;
-      });
-    }
-
-    monitorUsers();
   </script>
 </body>
 </html>
