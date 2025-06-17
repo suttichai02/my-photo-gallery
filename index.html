@@ -79,14 +79,19 @@
     }
     .gallery {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
     }
     .card {
       background: var(--card-bg);
       border-radius: 12px;
       padding: 10px;
+      text-align: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: 0.2s;
+    }
+    .card:hover {
+      transform: scale(1.02);
     }
     .card img {
       width: 100%;
@@ -110,235 +115,236 @@
       margin: 10px 0 20px;
       font-weight: bold;
     }
-    input.comment-input {
-      width: 100%;
-      margin: 5px 0;
-      padding: 6px;
-      border-radius: 6px;
-    }
-    button.comment-btn {
-      background: #2196f3;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
+    @media (max-width: 500px) {
+      .gender-page, .upload-area {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
 <body>
 
-  <div class="theme-toggle">
-    <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
+<div class="theme-toggle">
+  <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
+</div>
+
+<h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
+
+<div id="gender-page" class="gender-page">
+  <input id="name-input" placeholder="ชื่อเล่น..." />
+  <button onclick="selectGender('ชาย')">👦 ชาย</button>
+  <button onclick="selectGender('หญิง')">👧 หญิง</button>
+</div>
+
+<div id="main-page" style="display:none">
+  <div class="gender-counter" id="gender-count">กำลังโหลดข้อมูลเพศ...</div>
+
+  <div class="upload-area">
+    <input id="caption-input" placeholder="ข้อความประกอบ..." />
+    <input type="file" id="file-input" />
+    <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
   </div>
 
-  <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
-
-  <div id="gender-page" class="gender-page">
-    <input id="name-input" placeholder="ชื่อเล่น..." />
-    <button onclick="selectGender('ชาย')">👦 ชาย</button>
-    <button onclick="selectGender('หญิง')">👧 หญิง</button>
+  <div class="search-area">
+    <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
   </div>
 
-  <div id="main-page" style="display:none">
-    <div class="gender-counter" id="gender-count">กำลังโหลดข้อมูลเพศ...</div>
+  <div class="gallery" id="gallery"></div>
+</div>
 
-    <div class="upload-area">
-      <input id="caption-input" placeholder="ข้อความประกอบ..." />
-      <input type="file" id="file-input" />
-      <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
-    </div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    <div class="search-area">
-      <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
-    </div>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAadMR9TVflpHzsfXIeAe9eHdVF2UwyO-Y",
+    authDomain: "photo-gallery-a2dec.firebaseapp.com",
+    projectId: "photo-gallery-a2dec",
+    storageBucket: "photo-gallery-a2dec.appspot.com",
+    messagingSenderId: "163307931322",
+    appId: "1:163307931322:web:90e290b72543fd8ab92483"
+  };
 
-    <div class="gallery" id="gallery"></div>
-  </div>
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
-      setDoc, updateDoc, getDoc, query, where
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const nameInput = document.getElementById('name-input');
+  const captionInput = document.getElementById('caption-input');
+  const fileInput = document.getElementById('file-input');
+  const uploadBtn = document.getElementById('upload-btn');
+  const gallery = document.getElementById('gallery');
+  const searchInput = document.getElementById('search-input');
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  const genderCount = document.getElementById('gender-count');
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAadMR9TVflpHzsfXIeAe9eHdVF2UwyO-Y",
-      authDomain: "photo-gallery-a2dec.firebaseapp.com",
-      projectId: "photo-gallery-a2dec",
-      storageBucket: "photo-gallery-a2dec.appspot.com",
-      messagingSenderId: "163307931322",
-      appId: "1:163307931322:web:90e290b72543fd8ab92483"
-    };
+  let gender = null;
+  let nickname = "";
+  let userId = `user_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  window.selectGender = async (g) => {
+    nickname = nameInput.value.trim();
+    if (!nickname) return alert("กรุณากรอกชื่อเล่นก่อน");
+    gender = g;
 
-    const nameInput = document.getElementById('name-input');
-    const captionInput = document.getElementById('caption-input');
-    const fileInput = document.getElementById('file-input');
-    const uploadBtn = document.getElementById('upload-btn');
-    const gallery = document.getElementById('gallery');
-    const searchInput = document.getElementById('search-input');
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    const genderCount = document.getElementById('gender-count');
+    document.getElementById('gender-page').style.display = 'none';
+    document.getElementById('main-page').style.display = 'block';
 
-    let gender = null;
-    let nickname = "";
-    let userId = `user_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-
-    window.selectGender = async (g) => {
-      nickname = nameInput.value.trim();
-      if (!nickname) return alert("กรุณากรอกชื่อเล่นก่อน");
-      gender = g;
-
-      document.getElementById('gender-page').style.display = 'none';
-      document.getElementById('main-page').style.display = 'block';
-
-      await setDoc(doc(db, 'onlineUsers', userId), {
-        name: nickname,
-        gender: gender,
-        timestamp: Date.now()
-      });
-
-      loadImages();
-    };
-
-    uploadBtn.onclick = async () => {
-      const file = fileInput.files[0];
-      const caption = captionInput.value.trim();
-      if (!file || !caption || !nickname || !gender) {
-        return alert("❌ กรุณาเลือกไฟล์ + เขียนข้อความ");
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', 'YOUR_UPLOAD_PRESET');
-
-      const res = await fetch('https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      if (data.secure_url) {
-        await addDoc(collection(db, 'images'), {
-          url: data.secure_url,
-          uploader: nickname,
-          caption,
-          gender,
-          created: Date.now(),
-          likes: []
-        });
-        fileInput.value = '';
-        captionInput.value = '';
-        loadImages();
-      } else {
-        alert("❌ Upload ไม่สำเร็จ");
-      }
-    };
-
-    async function loadImages() {
-      gallery.innerHTML = "⏳ Loading...";
-      const snapshot = await getDocs(collection(db, 'images'));
-      const search = searchInput.value.trim().toLowerCase();
-      gallery.innerHTML = "";
-
-      const docs = [];
-      let male = 0, female = 0;
-
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        docs.push({ id: docSnap.id, ...data });
-        if (data.gender === 'ชาย') male++;
-        if (data.gender === 'หญิง') female++;
-      });
-
-      genderCount.textContent = `👨 ชาย: ${male} | 👩 หญิง: ${female}`;
-
-      for (const img of docs.sort((a, b) => b.created - a.created)) {
-        if (!img.uploader.toLowerCase().includes(search)) continue;
-        const { id, url, uploader, caption, gender: g, likes = [] } = img;
-        const icon = g === 'ชาย' ? '👦' : '👧';
-
-        const card = document.createElement('div');
-        card.className = 'card';
-        const isLiked = likes.includes(userId);
-        card.innerHTML = `
-          <img src="${url}" />
-          <p>${icon} <b>${uploader}</b></p>
-          <p>${caption}</p>
-          <p><button class="like-btn" data-id="${id}">👍 ${likes.length} ${isLiked ? '✅' : ''}</button></p>
-          <div class="comments" data-id="${id}"></div>
-          <input type="text" class="comment-input" placeholder="เขียนคอมเมนต์..." data-id="${id}" />
-          <button class="comment-btn" data-id="${id}">💬 ส่ง</button>
-          ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
-        `;
-        gallery.appendChild(card);
-
-        // Like button
-        card.querySelector('.like-btn')?.addEventListener('click', async () => {
-          const imgRef = doc(db, 'images', id);
-          const snap = await getDoc(imgRef);
-          let likes = snap.data().likes || [];
-          if (likes.includes(userId)) {
-            likes = likes.filter(uid => uid !== userId);
-          } else {
-            likes.push(userId);
-          }
-          await updateDoc(imgRef, { likes });
-          loadImages();
-        });
-
-        // Load comments
-        const commentArea = card.querySelector('.comments');
-        const commentsSnap = await getDocs(query(collection(db, 'comments'), where("imageId", "==", id)));
-        commentsSnap.forEach(c => {
-          const d = c.data();
-          const p = document.createElement('p');
-          p.textContent = `💬 ${d.name}: ${d.text}`;
-          commentArea.appendChild(p);
-        });
-
-        // Submit comment
-        card.querySelector('.comment-btn')?.addEventListener('click', async () => {
-          const input = card.querySelector('.comment-input');
-          const text = input.value.trim();
-          if (!text) return;
-          await addDoc(collection(db, 'comments'), {
-            imageId: id,
-            name: nickname,
-            text,
-            created: Date.now()
-          });
-          loadImages();
-        });
-
-        // Delete button
-        card.querySelector('.delete-btn')?.addEventListener('click', async () => {
-          if (confirm("คุณแน่ใจว่าจะลบรูปภาพนี้?")) {
-            await deleteDoc(doc(db, 'images', id));
-            loadImages();
-          }
-        });
-      }
-    }
-
-    window.addEventListener('beforeunload', async () => {
-      try {
-        if (userId) {
-          await deleteDoc(doc(db, 'onlineUsers', userId));
-        }
-      } catch (e) {
-        console.warn("ไม่สามารถลบสถานะออนไลน์ก่อนปิดหน้าต่าง");
-      }
+    await setDoc(doc(db, 'onlineUsers', userId), {
+      name: nickname,
+      gender: gender,
+      timestamp: Date.now()
     });
 
-    searchInput.addEventListener('input', loadImages);
-    themeToggleBtn.onclick = () => {
-      document.body.classList.toggle('dark-mode');
-    };
-  </script>
+    loadImages();
+  };
+
+  uploadBtn.onclick = async () => {
+    const file = fileInput.files[0];
+    const caption = captionInput.value.trim();
+    if (!file || !caption || !nickname || !gender) {
+      return alert("❌ กรุณาเลือกไฟล์ + เขียนข้อความ");
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'unsigned');
+
+    const res = await fetch('https://api.cloudinary.com/v1_1/deyrj2kld/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.secure_url) {
+      await addDoc(collection(db, 'images'), {
+        url: data.secure_url,
+        uploader: nickname,
+        caption,
+        gender,
+        created: Date.now()
+      });
+      fileInput.value = '';
+      captionInput.value = '';
+      loadImages();
+    } else {
+      alert("❌ Upload ไม่สำเร็จ");
+    }
+  };
+
+  async function loadImages() {
+    gallery.innerHTML = "⏳ Loading...";
+    const snapshot = await getDocs(collection(db, 'images'));
+    const search = searchInput.value.trim().toLowerCase();
+    gallery.innerHTML = "";
+
+    const docs = [];
+    let male = 0, female = 0;
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      docs.push({ id: docSnap.id, ...data });
+      if (data.gender === 'ชาย') male++;
+      if (data.gender === 'หญิง') female++;
+    });
+
+    genderCount.textContent = `👨 ชาย: ${male} | 👩 หญิง: ${female}`;
+
+    for (const { id, url, uploader, caption, gender: g } of docs.sort((a, b) => b.created - a.created)) {
+      if (!uploader.toLowerCase().includes(search)) continue;
+      const icon = g === 'ชาย' ? '👦' : '👧';
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img src="${url}" />
+        <p>${icon} <b>${uploader}</b></p>
+        <p>${caption}</p>
+        ${uploader === nickname ? `<button data-id="${id}" class="delete-btn">ลบ</button>` : ''}
+      `;
+
+      const commentBox = document.createElement('div');
+      commentBox.innerHTML = `
+        <div style="margin-top:10px;">
+          <input type="text" placeholder="เขียนความคิดเห็น..." style="width:70%;padding:5px;border-radius:5px;" />
+          <button style="padding:5px 10px;" class="comment-submit">💬 ส่ง</button>
+          <div class="comment-list" style="margin-top:10px;"></div>
+        </div>
+      `;
+      card.appendChild(commentBox);
+      gallery.appendChild(card);
+
+      const commentInput = commentBox.querySelector('input');
+      const commentSubmit = commentBox.querySelector('.comment-submit');
+      const commentList = commentBox.querySelector('.comment-list');
+
+      const commentSnapshot = await getDocs(collection(db, 'comments'));
+      const relatedComments = commentSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(c => c.imageId === id)
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      commentList.innerHTML = '';
+      relatedComments.forEach(c => {
+        const p = document.createElement('p');
+        p.innerHTML = `<b>${c.by}:</b> ${c.text}`;
+        if (c.by === nickname) {
+          const del = document.createElement('button');
+          del.innerText = '🗑️';
+          del.style.marginLeft = '8px';
+          del.style.background = 'transparent';
+          del.style.border = 'none';
+          del.style.cursor = 'pointer';
+          del.onclick = async () => {
+            await deleteDoc(doc(db, 'comments', c.id));
+            loadImages();
+          };
+          p.appendChild(del);
+        }
+        commentList.appendChild(p);
+      });
+
+      commentSubmit.onclick = async () => {
+        const text = commentInput.value.trim();
+        if (!text) return;
+        await addDoc(collection(db, 'comments'), {
+          imageId: id,
+          text,
+          by: nickname,
+          timestamp: Date.now()
+        });
+        commentInput.value = '';
+        loadImages();
+      };
+    }
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm("คุณแน่ใจว่าจะลบรูปภาพนี้?")) {
+          await deleteDoc(doc(db, 'images', id));
+          loadImages();
+        }
+      };
+    });
+  }
+
+  window.addEventListener('beforeunload', async () => {
+    try {
+      if (userId) {
+        await deleteDoc(doc(db, 'onlineUsers', userId));
+      }
+    } catch (e) {
+      console.warn("ไม่สามารถลบสถานะออนไลน์ก่อนปิดหน้าต่าง");
+    }
+  });
+
+  searchInput.addEventListener('input', loadImages);
+  themeToggleBtn.onclick = () => {
+    document.body.classList.toggle('dark-mode');
+  };
+</script>
 </body>
 </html>
