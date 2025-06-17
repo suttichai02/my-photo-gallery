@@ -8,14 +8,33 @@
   <style>
     body {
       font-family: 'Kanit', sans-serif;
-      background: #f5f7fa;
+      background: var(--bg-color);
+      color: var(--text-color);
       margin: 0;
       padding: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    :root {
+      --bg-color: #f5f7fa;
+      --text-color: #333;
+      --card-bg: white;
+      --btn-bg: #4CAF50;
+      --btn-text: white;
+      --delete-bg: #e74c3c;
+    }
+
+    .dark-mode {
+      --bg-color: #1f1f1f;
+      --text-color: #f1f1f1;
+      --card-bg: #2c2c2c;
+      --btn-bg: #5DAE8B;
+      --btn-text: #fff;
+      --delete-bg: #c0392b;
     }
 
     h2 {
       text-align: center;
-      color: #333;
     }
 
     .form-upload {
@@ -37,14 +56,14 @@
       padding: 10px 20px;
       font-size: 16px;
       border: none;
-      background: #4CAF50;
-      color: white;
+      background: var(--btn-bg);
+      color: var(--btn-text);
       border-radius: 8px;
       cursor: pointer;
     }
 
     button:hover {
-      background: #45a049;
+      opacity: 0.9;
     }
 
     .gallery {
@@ -54,7 +73,7 @@
     }
 
     .card {
-      background: white;
+      background: var(--card-bg);
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 10px;
@@ -73,21 +92,41 @@
     }
 
     .card p {
-      margin: 8px 0 0;
-      font-weight: 500;
+      margin: 8px 0 4px;
     }
 
     .delete-btn {
-      background: #e74c3c;
-      margin-top: 5px;
+      background: var(--delete-bg);
+      margin-top: 6px;
     }
 
-    .delete-btn:hover {
-      background: #c0392b;
+    .search-bar {
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+    }
+
+    .like-btn {
+      background: transparent;
+      color: #e74c3c;
+      cursor: pointer;
+      font-size: 18px;
+      border: none;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
+
+  <div class="theme-toggle">
+    <button id="theme-toggle"><i class="fas fa-moon"></i> Toggle Theme</button>
+  </div>
+
   <h2><i class="fas fa-camera-retro"></i> My Photo Gallery</h2>
 
   <div class="form-upload">
@@ -96,12 +135,16 @@
     <button id="upload-btn"><i class="fas fa-upload"></i> Upload</button>
   </div>
 
+  <div class="search-bar">
+    <input id="search-input" placeholder="🔍 ค้นหาชื่อเล่น..." />
+  </div>
+
   <div class="gallery" id="gallery"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -110,76 +153,4 @@
       projectId: "photo-gallery-a2dec",
       storageBucket: "photo-gallery-a2dec.appspot.com",
       messagingSenderId: "163307931322",
-      appId: "1:163307931322:web:90e290b72543fd8ab92483"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const nameInput = document.getElementById("name-input");
-    const fileInput = document.getElementById("file-input");
-    const uploadBtn = document.getElementById("upload-btn");
-    const gallery = document.getElementById("gallery");
-
-    uploadBtn.onclick = async () => {
-      const file = fileInput.files[0];
-      const name = nameInput.value.trim();
-      if (!file || !name) return alert("❌ กรุณาใส่ชื่อและเลือกรูป");
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "unsigned"); // Replace with your Cloudinary unsigned preset
-
-      const res = await fetch("https://api.cloudinary.com/v1_1/deyrj2kld/image/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.secure_url) {
-        await addDoc(collection(db, "images"), {
-          url: data.secure_url,
-          uploader: name,
-          created: Date.now(),
-        });
-        loadImages();
-      } else {
-        alert("❌ Upload failed");
-      }
-    };
-
-    async function loadImages() {
-      gallery.innerHTML = "⏳ Loading...";
-      const snapshot = await getDocs(collection(db, "images"));
-      gallery.innerHTML = "";
-
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const id = docSnap.id;
-
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <img src="${data.url}" />
-          <p><i class="fas fa-user"></i> ${data.uploader}</p>
-          <button class="delete-btn" data-id="${id}"><i class="fas fa-trash-alt"></i> ลบ</button>
-        `;
-        gallery.appendChild(card);
-      });
-
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.getAttribute("data-id");
-          const confirmDelete = confirm("คุณแน่ใจหรือไม่ว่าต้องการลบ?");
-          if (confirmDelete) {
-            await deleteDoc(doc(db, "images", id));
-            loadImages();
-          }
-        };
-      });
-    }
-
-    loadImages();
-  </script>
-</body>
-</html>
+      appId: "1:1633
